@@ -214,6 +214,15 @@ class Learner:
         await self.async_export()
         return True
 
+    @callback
+    def async_defer(self, entry_id: str) -> bool:
+        """Drop a proposal from review until it's heard again."""
+        if not self.store.async_defer(entry_id):
+            return False
+        self.async_update_review_issue()
+        self._notify()
+        return True
+
     async def async_forget(self, entry_id: str) -> bool:
         """Delete an entry and remove it from the file."""
         if not self.store.async_forget(entry_id):

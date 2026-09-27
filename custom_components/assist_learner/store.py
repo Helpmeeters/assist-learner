@@ -11,6 +11,7 @@ from .const import (
     DOMAIN,
     STATUS_APPROVED,
     STATUS_CANDIDATE,
+    STATUS_DEFERRED,
     STATUS_PROPOSED,
     STATUS_REJECTED,
 )
@@ -178,7 +179,9 @@ class LearnerStore:
             }
         )
         entry["count"] += 1
-        if entry["status"] == STATUS_CANDIDATE and entry["count"] >= threshold:
+        if (
+            entry["status"] == STATUS_CANDIDATE and entry["count"] >= threshold
+        ) or entry["status"] == STATUS_DEFERRED:
             entry["status"] = STATUS_PROPOSED
         self.data["last_eligible"] = entry["id"]
         self.async_schedule_save()
@@ -188,9 +191,19 @@ class LearnerStore:
     def async_propose(self, entry_id: str) -> bool:
         """Move a candidate straight to review."""
         entry = self.get(entry_id)
-        if entry is None or entry["status"] != STATUS_CANDIDATE:
+        if entry is None or entry["status"] not in (STATUS_CANDIDATE, STATUS_DEFERRED):
             return False
         entry["status"] = STATUS_PROPOSED
+        self.async_schedule_save()
+        return True
+
+    @callback
+    def async_defer(self, entry_id: str) -> bool:
+        """Hide a proposal until its phrase is heard again."""
+        entry = self.get(entry_id)
+        if entry is None or entry["status"] != STATUS_PROPOSED:
+            return False
+        entry["status"] = STATUS_DEFERRED
         self.async_schedule_save()
         return True
 
@@ -249,6 +262,7 @@ class LearnerStore:
         return {
             "candidates": sum(e["status"] == STATUS_CANDIDATE for e in entries),
             "proposed": sum(e["status"] == STATUS_PROPOSED for e in entries),
+            "deferred": sum(e["status"] == STATUS_DEFERRED for e in entries),
             "approved": sum(e["status"] == STATUS_APPROVED for e in entries),
             "rejected": sum(e["status"] == STATUS_REJECTED for e in entries),
             "stale": sum(bool(e["stale"]) for e in entries),

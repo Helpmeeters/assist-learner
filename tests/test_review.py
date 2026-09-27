@@ -42,17 +42,23 @@ async def test_fix_flow_approve_and_reject(
     assert sentences_file(hass).exists()
 
 
-async def test_fix_flow_skip_keeps_issue(
+async def test_fix_flow_defer_until_heard_again(
     hass: HomeAssistant, house: House, fake_llm, learner_entry
 ) -> None:
-    """Skipping leaves the proposal and the issue in place."""
+    """Deferring clears the issue until the phrase is heard again."""
     entry = await learn(hass, fake_llm, "it's too dark in here", turn_on_area("Kitchen"), house.kitchen_satellite)
     result = await _start_flow(hass)
-    result = await repairs_flow_manager(hass).async_configure(result["flow_id"], {"decision": "skip"})
-    assert result["type"] == "abort"
-    assert result["reason"] == "skipped"
+    result = await repairs_flow_manager(hass).async_configure(result["flow_id"], {"decision": "defer"})
+    assert result["type"] == "create_entry"
+    assert entry["status"] == "deferred"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_REVIEW) is None
+
+    await converse(hass, "it's too dark in here", fake_llm.agent_id, house.kitchen_satellite)
     assert entry["status"] == "proposed"
+    assert entry["count"] == 3
     assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_REVIEW) is not None
+    result = await _start_flow(hass)
+    assert result["description_placeholders"]["count"] == "3"
 
 
 async def test_fix_flow_edit_sentence(

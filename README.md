@@ -12,7 +12,7 @@ Assist Learner writes one file, `config/custom_sentences/<language>/assist_learn
 1. You talk to your usual LLM agent (OpenAI, Anthropic, Google, Ollama, and so on). Its configuration doesn't change.
 2. Assist Learner watches the conversation log. When a single-turn command succeeds using only action tools (turn on, set brightness, and so on), it records the wording and the actions.
 3. Once the same wording has produced the same actions twice (configurable), it appears in **Settings > Repairs** as a learned command to review. The review shows the entities it actually affected.
-4. You approve it (optionally editing the wording), reject it (it will never be proposed again), or skip it for later.
+4. You approve it (optionally editing the wording), reject it (it will never be proposed again), or choose **Decide when heard again**, which removes it from Repairs until you say it again. It then comes back with its updated count.
 5. Approved commands are validated and written to the sentences file, and Assist reloads. From then on, with **Prefer handling commands locally** turned on in your Assist pipeline, the local matcher answers before the LLM is ever called.
 
 Room-relative commands stay room-relative. If you said "it's too dark in here" to the kitchen speaker and the LLM turned on the kitchen lights, the learned sentence turns on the lights in whichever room's device hears it. On a device with no area it matches nothing, rather than turning on every light in the house.
@@ -52,7 +52,7 @@ Want to see it work right away? Say a command to your LLM agent once, then run t
 
 ## Status and actions
 
-`sensor.assist_learner_status` is `listening`, `paused`, or `error`. Its attributes have counts of candidates, proposed, approved, rejected, and stale commands, plus the last export time, the last error, and why the most recent command was skipped.
+`sensor.assist_learner_status` is `listening`, `paused`, or `error`. Its attributes have counts of candidates, proposed, deferred, approved, rejected, and stale commands, plus the last export time, the last error, and why the most recent command was skipped.
 
 | Action | What it does |
 |---|---|

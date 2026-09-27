@@ -39,6 +39,18 @@ async def test_threshold_and_rejection(hass: HomeAssistant) -> None:
     assert store.async_record(evaluation(), "It's too dark in here", threshold=2) is None
 
 
+async def test_defer_reproposes_on_next_run(hass: HomeAssistant) -> None:
+    """A deferred entry returns to review the next time it's heard, regardless of threshold."""
+    store = LearnerStore(hass)
+    entry = store.async_record(evaluation(), "x", threshold=1)
+    assert store.async_defer(entry["id"])
+    assert entry["status"] == "deferred"
+    assert store.counts()["deferred"] == 1
+    store.async_record(evaluation(), "x", threshold=5)
+    assert entry["status"] == "proposed"
+    assert entry["count"] == 2
+
+
 async def test_forget_allows_relearning(hass: HomeAssistant) -> None:
     """Forget deletes the entry but doesn't block the phrase."""
     store = LearnerStore(hass)

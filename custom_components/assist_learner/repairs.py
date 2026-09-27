@@ -46,11 +46,10 @@ def describe_entities(hass: HomeAssistant, entry: dict[str, Any]) -> str:
 
 
 class ReviewCandidatesFlow(RepairsFlow):
-    """Approve, reject, edit, or skip each proposed sentence."""
+    """Approve, reject, edit, or defer each proposed sentence."""
 
     def __init__(self) -> None:
         """Initialize."""
-        self._skipped: set[str] = set()
         self._current: str | None = None
 
     async def async_step_init(
@@ -74,14 +73,10 @@ class ReviewCandidatesFlow(RepairsFlow):
             elif decision == "reject":
                 await learner.async_reject(self._current)
             else:
-                self._skipped.add(self._current)
+                learner.async_defer(self._current)
 
-        proposed = learner.store.by_status(STATUS_PROPOSED)
-        pending = [e for e in proposed if e["id"] not in self._skipped]
+        pending = learner.store.by_status(STATUS_PROPOSED)
         if not pending:
-            if proposed:
-                # Aborting keeps the issue open for the skipped ones.
-                return self.async_abort(reason="skipped")
             return self.async_create_entry(data={})
 
         entry = pending[0]
@@ -100,7 +95,7 @@ class ReviewCandidatesFlow(RepairsFlow):
                 {
                     vol.Required(DECISION, default="approve"): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=["approve", "reject", "skip"],
+                            options=["approve", "reject", "defer"],
                             translation_key=DECISION,
                         )
                     ),

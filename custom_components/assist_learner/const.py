@@ -39,6 +39,7 @@ ATTR_SENTENCE: Final = "sentence"
 
 STATUS_CANDIDATE: Final = "candidate"
 STATUS_PROPOSED: Final = "proposed"
+STATUS_DEFERRED: Final = "deferred"
 STATUS_APPROVED: Final = "approved"
 STATUS_REJECTED: Final = "rejected"
 

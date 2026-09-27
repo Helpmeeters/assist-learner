@@ -60,7 +60,6 @@
           }
         },
         "abort": {
-          "skipped": "Skipped commands stay in Repairs for later.",
           "not_loaded": "Assist Learner isn't loaded."
         }
       }
@@ -100,7 +99,7 @@
       "options": {
         "approve": "Approve",
         "reject": "Reject and never ask again",
-        "skip": "Decide later"
+        "defer": "Decide when heard again"
       }
     }
   },
