@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "sensor": {
+      "status": {
+        "default": "mdi:school-outline"
+      }
+    }
+  },
+  "services": {
+    "approve": {"service": "mdi:check"},
+    "reject": {"service": "mdi:close"},
+    "forget": {"service": "mdi:delete-outline"},
+    "learn_last": {"service": "mdi:school"}
+  }
+}

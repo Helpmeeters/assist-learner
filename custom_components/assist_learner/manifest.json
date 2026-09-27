@@ -1,0 +1,15 @@
+{
+  "domain": "assist_learner",
+  "name": "Assist Learner",
+  "after_dependencies": ["assist_pipeline"],
+  "codeowners": ["@andrewreutter"],
+  "config_flow": true,
+  "dependencies": ["conversation", "intent", "llm", "repairs"],
+  "documentation": "https://github.com/Helpmeeters/assist-learner",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Helpmeeters/assist-learner/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

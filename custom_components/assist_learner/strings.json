@@ -1,0 +1,146 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Assist Learner",
+        "description": "Assist Learner watches your LLM conversation agent. When the same command succeeds repeatedly, it proposes a local sentence for you to approve in Repairs. {prefer_local_note}\n\nCommands that touch these domains are never learned: {denylist_floor}.",
+        "data": {
+          "threshold": "Agreeing runs before proposing",
+          "extra_denylist": "Extra domains to never learn",
+          "language": "Language",
+          "replay_enabled": "Enable replay agent",
+          "fallback_agent_id": "Fallback agent for the replay agent"
+        },
+        "data_description": {
+          "threshold": "How many times the same wording must produce the same actions before you're asked to approve it.",
+          "replay_enabled": "Adds a conversation agent that replays approved commands that can't be written as sentences (several actions, scripts). Set it as the pipeline agent to use it.",
+          "fallback_agent_id": "Where the replay agent sends everything it doesn't replay."
+        }
+      }
+    },
+    "error": {
+      "fallback_required": "Choose a fallback agent when the replay agent is enabled."
+    },
+    "abort": {
+      "single_instance_allowed": "Assist Learner is already set up.",
+      "no_llm_agent": "No LLM conversation agent is set up. Add one (for example OpenAI, Anthropic, Google, or Ollama) first.",
+      "unsupported": "Capture can't run on this Home Assistant: {reason}"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Assist Learner",
+        "description": "{prefer_local_note}\n\nCommands that touch these domains are never learned: {denylist_floor}.",
+        "data": {
+          "threshold": "Agreeing runs before proposing",
+          "extra_denylist": "Extra domains to never learn",
+          "language": "Language",
+          "replay_enabled": "Enable replay agent",
+          "fallback_agent_id": "Fallback agent for the replay agent"
+        }
+      }
+    },
+    "error": {
+      "fallback_required": "Choose a fallback agent when the replay agent is enabled."
+    }
+  },
+  "issues": {
+    "review_candidates": {
+      "title": "{count} learned commands to review",
+      "fix_flow": {
+        "step": {
+          "review": {
+            "title": "Review learned command ({remaining} left)",
+            "description": "Heard: \"{heard}\"\n\nSentence: `{sentence}`\n\nAction: {action}\n\nAffected when learned: {entities}\n\nSeen {count} times. {notes}",
+            "data": {
+              "decision": "Decision",
+              "sentence": "Sentence (edit if you like)"
+            }
+          }
+        },
+        "abort": {
+          "skipped": "Skipped commands stay in Repairs for later.",
+          "not_loaded": "Assist Learner isn't loaded."
+        }
+      }
+    },
+    "capture_paused": {
+      "title": "Assist Learner stopped learning",
+      "description": "Assist Learner can't read conversations on this Home Assistant version: {reason}.\n\nIt relies on internal parts of the conversation integration that changed. Learned sentences keep working. Update Assist Learner, or report this at https://github.com/andrewreutter/assist-learner/issues."
+    },
+    "capture_watchdog": {
+      "title": "Assist Learner hasn't learned anything in a week",
+      "description": "Conversations are happening, but Assist Learner hasn't recognized any LLM actions in them for 7 days. This usually means a Home Assistant update changed how conversations are logged. Update Assist Learner, or report this at https://github.com/andrewreutter/assist-learner/issues."
+    },
+    "export_failed": {
+      "title": "Assist Learner couldn't write some sentences",
+      "description": "These approved commands weren't added to custom_sentences, so your existing local commands stay safe: {details}.\n\nForget or reject them, or edit the sentence with the assist_learner.approve action."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "listening": "Listening",
+          "paused": "Paused",
+          "error": "Error"
+        }
+      }
+    },
+    "conversation": {
+      "replay": {
+        "name": "Replay agent"
+      }
+    }
+  },
+  "selector": {
+    "decision": {
+      "options": {
+        "approve": "Approve",
+        "reject": "Reject and never ask again",
+        "skip": "Decide later"
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Assist Learner isn't loaded."
+    },
+    "unknown_candidate": {
+      "message": "No learned command with id {candidate_id}."
+    },
+    "nothing_to_learn": {
+      "message": "There's no recent command that can be learned. Say an action command to your LLM agent first."
+    }
+  },
+  "services": {
+    "approve": {
+      "name": "Approve",
+      "description": "Approves a learned command and writes it to custom_sentences.",
+      "fields": {
+        "candidate_id": {"name": "Candidate ID", "description": "ID of the learned command."},
+        "sentence": {"name": "Sentence", "description": "Optional replacement wording."}
+      }
+    },
+    "reject": {
+      "name": "Reject",
+      "description": "Rejects a learned command. Its wording is never proposed again.",
+      "fields": {
+        "candidate_id": {"name": "Candidate ID", "description": "ID of the learned command."}
+      }
+    },
+    "forget": {
+      "name": "Forget",
+      "description": "Deletes a learned command and removes it from custom_sentences.",
+      "fields": {
+        "candidate_id": {"name": "Candidate ID", "description": "ID of the learned command."}
+      }
+    },
+    "learn_last": {
+      "name": "Learn last command",
+      "description": "Sends the most recent learnable command straight to review, without waiting for it to repeat."
+    }
+  }
+}

@@ -1,0 +1,25 @@
+approve:
+  fields:
+    candidate_id:
+      required: true
+      selector:
+        text:
+    sentence:
+      selector:
+        text:
+
+reject:
+  fields:
+    candidate_id:
+      required: true
+      selector:
+        text:
+
+forget:
+  fields:
+    candidate_id:
+      required: true
+      selector:
+        text:
+
+learn_last:

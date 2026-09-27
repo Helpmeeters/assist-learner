@@ -1,0 +1,17 @@
+{
+  "name": "Assist Learner",
+  "image": "mcr.microsoft.com/devcontainers/python:3.14",
+  "features": {
+    "ghcr.io/va-h/devcontainers-features/uv:1": {}
+  },
+  "postCreateCommand": "uv venv -p 3.14 && uv pip install pytest-homeassistant-custom-component 'hassil==3.12.1' 'home-assistant-intents==2026.8.28' 'gazetteer-matcher==1.1.0'",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"],
+      "settings": {
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "python.testing.pytestEnabled": true
+      }
+    }
+  }
+}
