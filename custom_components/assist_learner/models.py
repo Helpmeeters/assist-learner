@@ -38,3 +38,5 @@ class Exchange:
     final_speech: str | None = None
     superseded: bool = False
     adapter_error: str | None = None
+    system_prompt: str | None = None
+    tool_names: list[str] = field(default_factory=list)

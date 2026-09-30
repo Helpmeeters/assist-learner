@@ -21,6 +21,7 @@ from .capture import ChatLogCapture
 from .const import (
     CONF_EXTRA_DENYLIST,
     CONF_LANGUAGE,
+    CONF_REPLAY,
     CONF_THRESHOLD,
     DEFAULT_THRESHOLD,
     DOMAIN,
@@ -65,7 +66,6 @@ class Learner:
         self.last_export_result: ExportResult | None = None
         self.last_tool_exchange: datetime | None = None
         self.last_rejection: dict[str, Any] | None = None
-        self.ignored_agent_ids: set[str] = set()
         self._export_lock = asyncio.Lock()
         self._unsubs: list[CALLBACK_TYPE] = []
 
@@ -83,6 +83,11 @@ class Learner:
     def language(self) -> str:
         """Default language for export."""
         return self.options.get(CONF_LANGUAGE) or self.hass.config.language
+
+    @property
+    def replay(self) -> bool:
+        """Whether replay-only entries are exported for the replay intent."""
+        return bool(self.options.get(CONF_REPLAY))
 
     @property
     def last_error(self) -> str | None:
@@ -160,22 +165,41 @@ class Learner:
 
     @callback
     def _on_exchange(self, exchange: Exchange) -> None:
-        if exchange.agent_ids & self.ignored_agent_ids:
-            return
         if any(not call.external for call in exchange.calls):
             self.last_tool_exchange = dt_util.utcnow()
         evaluation = evaluate(
             self.hass, exchange, self.options.get(CONF_EXTRA_DENYLIST, [])
         )
         if not evaluation.eligible:
-            _LOGGER.debug("Not learning %r: %s", exchange.text, evaluation.reason)
+            _LOGGER.debug(
+                "Not learning %r (conversation %s): %s",
+                exchange.text,
+                exchange.conversation_id,
+                evaluation.reason,
+            )
             self.last_rejection = {"reason": evaluation.reason, "at": dt_util.utcnow()}
             self._notify()
             return
         entry = self.store.async_record(evaluation, exchange.text, self.threshold)
         if entry is not None:
             _LOGGER.debug(
-                "Learned %r (%s, count %s)", entry["sentence"], entry["status"], entry["count"]
+                "Learned %r as %s (conversation %s, %s, count %s): calls=%s entities=%s "
+                "room_relative=%s replay_only=%s",
+                entry["sentence"],
+                entry["id"],
+                exchange.conversation_id,
+                entry["status"],
+                entry["count"],
+                entry["calls"],
+                entry["entities"],
+                entry["room_relative"],
+                entry.get("replay_only_reason") or False,
+            )
+        else:
+            _LOGGER.debug(
+                "Eligible but not recorded %r (conversation %s): wording was rejected before",
+                exchange.text,
+                exchange.conversation_id,
             )
         self.async_update_review_issue()
         self._notify()
@@ -244,7 +268,7 @@ class Learner:
     async def async_export(self) -> ExportResult:
         """Export approved entries and surface failures as a repair issue."""
         async with self._export_lock:
-            result = await async_export(self.hass, self.store, self.language)
+            result = await async_export(self.hass, self.store, self.language, self.replay)
         self.last_export = dt_util.utcnow()
         self.last_export_result = result
         if result.file_error or result.errors:

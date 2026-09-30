@@ -24,7 +24,7 @@ Room-relative commands stay room-relative. If you said "it's too dark in here" t
 - Anything that touched a **lock, alarm panel, valve, or garage or gate cover**. This floor can't be turned off. You can add more domains in the options.
 - Utterances with fewer than 3 words, stop phrases ("okay", "do it"), sentence-template characters, or numbers that don't map to a slot.
 
-Commands that can't be written as one sentence (several actions, or scripts) can still be approved for the optional **replay agent** (see below).
+Commands that can't be written as one ordinary sentence (several actions, or scripts) can still be learned if you turn on **Also learn multi-step commands and scripts** (see below).
 
 ## Requirements
 
@@ -45,8 +45,7 @@ The single setup screen has these options:
 | Agreeing runs before proposing | 2 | How many times the same wording must produce the same actions |
 | Extra domains to never learn | none | Added to the built-in floor |
 | Language | your HA language | Used when a conversation didn't report one |
-| Enable replay agent | off | Adds the replay conversation agent |
-| Fallback agent | none | Where the replay agent sends everything it doesn't replay |
+| Also learn multi-step commands and scripts | off | Replays approved commands that do several things or run a script, locally |
 
 Want to see it work right away? Say a command to your LLM agent once, then run the `assist_learner.learn_last` action. That sends the command straight to Repairs for review.
 
@@ -67,25 +66,44 @@ Repair issues tell you when something needs attention:
 - **stopped learning**: Home Assistant changed the internals Assist Learner relies on (see below). Learned sentences keep working.
 - **hasn't learned anything in a week**: conversations are happening but no LLM actions were recognized. This usually means the same kind of change as above.
 - **couldn't write some sentences**: an approved command failed validation, so it was left out and your existing local commands are untouched.
+- **pipeline uses the removed Replay agent**: an Assist pipeline still points at the conversation agent that earlier versions asked you to set up. Switch it back to your LLM agent.
 
-## Replay agent (optional)
+## Multi-step commands and scripts (optional)
 
-Some approved commands can't be expressed as a sentence: several actions at once ("movie time" dims the living room and turns on the TV lamp), or scripts. With the replay agent enabled, make **Assist Learner Replay agent** your pipeline's conversation agent and choose your LLM as its fallback. The replay agent:
+Some approved commands can't be an ordinary sentence: several actions at once ("movie time" dims the living room and turns on the TV lamp), or scripts. Turn on **Also learn multi-step commands and scripts** and they're written to the same sentences file, pointing at an intent Assist Learner handles. Your pipeline and its LLM agent stay exactly as they are; the local matcher picks these up the same way it does learned sentences. When one is heard, Assist Learner:
 
-- Replays approved commands whose wording matches exactly, using a fresh Assist tool session built from the current request. Room-relative actions target the room you're in now.
+- Runs the approved actions through a fresh Assist tool session built from the current request. Room-relative actions target the room you're in now.
 - Rechecks the denylist against the entities the command would affect right now, and refuses if any are blocked.
-- Passes everything else to the fallback agent unchanged. Learning continues as normal.
+- Answers "Done." without calling the LLM. If a room-relative command is said on a device with no area, it doesn't match, so your LLM answers as usual.
+
+Commands with a spoken number (like "set it to 40 percent") aren't replayed yet.
 
 ## Trust and privacy
 
 - **Files written:** only `config/custom_sentences/<language>/assist_learner.yaml`. Writes are atomic: a temp file is validated, then swapped in. Every sentence is parsed with hassil and must recognize its original utterance before it's included. The merged result is checked the same way the built-in agent loads it, so a bad entry can't break your other local commands.
 - **Hand edits:** you can edit the YAML. Assist Learner never rewrites an entry you've edited, and keeps any entries you add yourself.
-- **Stored data:** raw utterances, the actions taken, and the affected entity IDs are kept in `config/.storage/assist_learner`. Diagnostics downloads redact utterances and entity IDs.
+- **Stored data:** raw utterances, the actions taken, and the affected entity IDs are kept in `config/.storage/assist_learner`. Diagnostics downloads redact utterances and entity IDs. Debug logging, which is off by default, writes utterances, tool calls, and the agent's full system prompt to `home-assistant.log` unredacted.
 - **Internal APIs:** Home Assistant's public chat-log events don't include the tool-call arguments LLM agents send, or the request's language or device. Assist Learner reads them from the conversation integration's internal `current_chat_log` while the agent runs. All of that code is in `context_adapter.py` and checked against a minimum version. If a Home Assistant update changes it, capture pauses with a repair issue instead of guessing. CI runs against both Home Assistant stable and beta weekly.
+
+## Debug logging
+
+Turn on debug logging to see exactly what your LLM agent did with each request, whether or not it was learned. Either use **Enable debug logging** on the Assist Learner integration page (lasts until restart), or add this to `configuration.yaml`:
+
+```yaml
+logger:
+  logs:
+    custom_components.assist_learner: debug
+```
+
+Each finished turn then writes to `home-assistant.log`:
+
+- A `Turn:` line of JSON: the utterance, the device and area it came from, the agent, every tool call with its arguments and full result (including which entities it matched), the final reply, and the tools the agent was offered.
+- `System prompt for conversation …`: the full prompt the agent was given, including the exposed-entity list it chose from.
+- Why the turn was or wasn't learned, what each export did, and what each multi-step command replayed or why it refused.
 
 ## Uninstall
 
-Remove the integration from **Devices & services**, then uninstall it in HACS. `custom_sentences/<language>/assist_learner.yaml` is left in place on purpose, so your learned sentences keep working. Delete that file (and call `conversation.reload` or restart) if you want them gone too.
+Remove the integration from **Devices & services**, then uninstall it in HACS. `custom_sentences/<language>/assist_learner.yaml` is left in place on purpose, so your learned sentences keep working. Multi-step commands and scripts need the integration to run, so turn that option off before removing it, or they'll answer with an error. Delete that file (and call `conversation.reload` or restart) if you want them gone too.
 
 ## Development
 

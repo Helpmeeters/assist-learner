@@ -8,18 +8,13 @@
           "threshold": "Agreeing runs before proposing",
           "extra_denylist": "Extra domains to never learn",
           "language": "Language",
-          "replay_enabled": "Enable replay agent",
-          "fallback_agent_id": "Fallback agent for the replay agent"
+          "replay_enabled": "Also learn multi-step commands and scripts"
         },
         "data_description": {
           "threshold": "How many times the same wording must produce the same actions before you're asked to approve it.",
-          "replay_enabled": "Adds a conversation agent that replays approved commands that can't be written as sentences (several actions, scripts). Set it as the pipeline agent to use it.",
-          "fallback_agent_id": "Where the replay agent sends everything it doesn't replay."
+          "replay_enabled": "Approved commands that do several things at once or run a script are replayed locally, like learned sentences. Your Assist pipeline and its agent stay as they are."
         }
       }
-    },
-    "error": {
-      "fallback_required": "Choose a fallback agent when the replay agent is enabled."
     },
     "abort": {
       "single_instance_allowed": "Assist Learner is already set up.",
@@ -36,13 +31,12 @@
           "threshold": "Agreeing runs before proposing",
           "extra_denylist": "Extra domains to never learn",
           "language": "Language",
-          "replay_enabled": "Enable replay agent",
-          "fallback_agent_id": "Fallback agent for the replay agent"
+          "replay_enabled": "Also learn multi-step commands and scripts"
+        },
+        "data_description": {
+          "replay_enabled": "Approved commands that do several things at once or run a script are replayed locally, like learned sentences. Your Assist pipeline and its agent stay as they are."
         }
       }
-    },
-    "error": {
-      "fallback_required": "Choose a fallback agent when the replay agent is enabled."
     }
   },
   "issues": {
@@ -75,6 +69,10 @@
     "export_failed": {
       "title": "Assist Learner couldn't write some sentences",
       "description": "These approved commands weren't added to custom_sentences, so your existing local commands stay safe: {details}.\n\nForget or reject them, or edit the sentence with the assist_learner.approve action."
+    },
+    "replay_agent_removed": {
+      "title": "Assist pipeline uses the removed Assist Learner Replay agent",
+      "description": "These Assist pipelines still use the Assist Learner Replay agent, which no longer exists: {pipelines}.\n\nMulti-step commands and scripts are now replayed locally, so the pipeline can use your own agent directly. In **Settings > Voice assistants**, set each pipeline's conversation agent back to {agent} and keep **Prefer handling commands locally** on. This issue clears the next time Assist Learner loads."
     }
   },
   "entity": {
@@ -86,11 +84,6 @@
           "paused": "Paused",
           "error": "Error"
         }
-      }
-    },
-    "conversation": {
-      "replay": {
-        "name": "Replay agent"
       }
     }
   },

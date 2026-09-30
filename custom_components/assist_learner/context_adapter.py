@@ -36,6 +36,8 @@ class TurnSnapshot:
     calls: list[CapturedCall] = field(default_factory=list)
     agent_ids: set[str] = field(default_factory=set)
     final_speech: str | None = None
+    system_prompt: str | None = None
+    tool_names: list[str] = field(default_factory=list)
 
 
 def unsupported_reason() -> str | None:
@@ -92,6 +94,24 @@ def _turn_context(hass: HomeAssistant, chat_log: Any) -> TurnContext | None:
     return TurnContext(language=language, device_id=device_id, area_id=area_id)
 
 
+def _debug_details(chat_log: Any, content: list[Any]) -> tuple[str | None, list[str]]:
+    """Best-effort system prompt and tool names, for debug logging only. Never raises."""
+    prompt = next(
+        (
+            getattr(item, "content", None)
+            for item in content
+            if getattr(item, "role", None) == "system"
+        ),
+        None,
+    )
+    tools = getattr(getattr(chat_log, "llm_api", None), "tools", None) or []
+    try:
+        names = [str(getattr(tool, "name", tool)) for tool in tools]
+    except TypeError:
+        names = []
+    return (prompt if isinstance(prompt, str) else None), names
+
+
 def snapshot_turn(hass: HomeAssistant, chat_log: Any, user_text: str) -> TurnSnapshot:
     """Copy what happened after the last user message matching user_text."""
     content = list(chat_log.content)
@@ -105,6 +125,7 @@ def snapshot_turn(hass: HomeAssistant, chat_log: Any, user_text: str) -> TurnSna
         raise ContextAdapterError("the user message is not in the chat log")
 
     snapshot = TurnSnapshot(context=_turn_context(hass, chat_log))
+    snapshot.system_prompt, snapshot.tool_names = _debug_details(chat_log, content)
     calls_by_id: dict[str, CapturedCall] = {}
     try:
         for item in content[start + 1 :]:

@@ -15,7 +15,6 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_EXTRA_DENYLIST,
-    CONF_FALLBACK_AGENT,
     CONF_LANGUAGE,
     CONF_REPLAY,
     CONF_THRESHOLD,
@@ -54,14 +53,6 @@ def _prefer_local_enabled(hass: HomeAssistant) -> bool | None:
 
 
 def _schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
-    agents = _llm_agents(hass)
-    fallback_selector: Any = (
-        selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="conversation", include_entities=agents)
-        )
-        if agents
-        else selector.TextSelector()
-    )
     schema: dict[Any, Any] = {
         vol.Required(
             CONF_THRESHOLD, default=defaults.get(CONF_THRESHOLD, DEFAULT_THRESHOLD)
@@ -82,12 +73,6 @@ def _schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
         ): selector.LanguageSelector(),
         vol.Optional(CONF_REPLAY, default=defaults.get(CONF_REPLAY, False)): bool,
     }
-    fallback_key = (
-        vol.Optional(CONF_FALLBACK_AGENT, default=defaults[CONF_FALLBACK_AGENT])
-        if defaults.get(CONF_FALLBACK_AGENT)
-        else vol.Optional(CONF_FALLBACK_AGENT)
-    )
-    schema[fallback_key] = fallback_selector
     return vol.Schema(schema)
 
 
@@ -101,12 +86,6 @@ def _placeholders(hass: HomeAssistant) -> dict[str, str]:
     else:
         note = ""
     return {"prefer_local_note": note, "denylist_floor": ", ".join(sorted(FLOOR_DOMAINS))}
-
-
-def _validate(user_input: dict[str, Any]) -> dict[str, str]:
-    if user_input.get(CONF_REPLAY) and not user_input.get(CONF_FALLBACK_AGENT):
-        return {CONF_FALLBACK_AGENT: "fallback_required"}
-    return {}
 
 
 def _clean(user_input: dict[str, Any]) -> dict[str, Any]:
@@ -131,16 +110,12 @@ class AssistLearnerConfigFlow(ConfigFlow, domain=DOMAIN):
         if not _llm_agents(self.hass):
             return self.async_abort(reason="no_llm_agent")
 
-        errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _validate(user_input)
-            if not errors:
-                return self.async_create_entry(title="Assist Learner", data=_clean(user_input))
+            return self.async_create_entry(title="Assist Learner", data=_clean(user_input))
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_schema(self.hass, user_input or {}),
-            errors=errors,
+            data_schema=_schema(self.hass, {}),
             description_placeholders=_placeholders(self.hass),
         )
 
@@ -159,15 +134,11 @@ class AssistLearnerOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle options."""
-        errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _validate(user_input)
-            if not errors:
-                return self.async_create_entry(data=_clean(user_input))
-        defaults = user_input or {**self.config_entry.data, **self.config_entry.options}
+            return self.async_create_entry(data=_clean(user_input))
+        defaults = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(
             step_id="init",
             data_schema=_schema(self.hass, defaults),
-            errors=errors,
             description_placeholders=_placeholders(self.hass),
         )

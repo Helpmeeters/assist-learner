@@ -122,22 +122,19 @@ async def test_config_flow_requires_llm_agent(hass: HomeAssistant, house: House)
 
 
 async def test_config_flow_creates_entry(hass: HomeAssistant, house: House, fake_llm) -> None:
-    """One screen; replay needs a fallback agent."""
+    """One screen; replay needs nothing else, since the pipeline's agent is left alone."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     assert result["type"] is FlowResultType.FORM
+    assert "fallback_agent_id" not in result["data_schema"].schema
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_THRESHOLD: 3, CONF_REPLAY: True}
     )
-    assert result["errors"] == {"fallback_agent_id": "fallback_required"}
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {CONF_THRESHOLD: 3, CONF_REPLAY: False}
-    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_THRESHOLD] == 3
+    assert result["data"][CONF_REPLAY] is True
     await hass.async_block_till_done()
 
 

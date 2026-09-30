@@ -7,10 +7,12 @@ read from that object when the turn finalizes.
 
 from collections.abc import Callable
 from datetime import datetime
+import json
 import logging
 from typing import Any
 
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
@@ -151,12 +153,61 @@ class ChatLogCapture:
                 exchange.calls = snapshot.calls
                 exchange.agent_ids = snapshot.agent_ids
                 exchange.final_speech = snapshot.final_speech
+                exchange.system_prompt = snapshot.system_prompt
+                exchange.tool_names = snapshot.tool_names
         elif chat_log is None and saw_tool_result and not exchange.adapter_error:
             self._adapter_error(exchange, "tools ran but the active chat log was not available")
 
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            try:
+                self._log_turn(exchange, chat_log is not None)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Assist Learner failed to log a turn")
         self.last_exchange = dt_util.utcnow()
         try:
             self._on_exchange(exchange)
         except Exception as err:  # noqa: BLE001
             self.last_error = f"{type(err).__name__}: {err}"
             _LOGGER.exception("Assist Learner failed to process an exchange")
+
+    def _log_turn(self, exchange: Exchange, had_chat_log: bool) -> None:
+        context = exchange.context
+        device_name = area_name = None
+        if context and context.device_id:
+            if device := dr.async_get(self._hass).async_get(context.device_id):
+                device_name = device.name_by_user or device.name
+        if context and context.area_id:
+            if area := ar.async_get(self._hass).async_get_area(context.area_id):
+                area_name = area.name
+        trace = {
+            "conversation_id": exchange.conversation_id,
+            "turn_index": exchange.turn_index,
+            "text": exchange.text,
+            "language": context.language if context else None,
+            "device_id": context.device_id if context else None,
+            "device": device_name,
+            "area_id": context.area_id if context else None,
+            "area": area_name,
+            "agent_ids": sorted(exchange.agent_ids),
+            "calls": [
+                {
+                    "name": call.name,
+                    "args": call.args,
+                    "external": call.external,
+                    "result": call.result,
+                }
+                for call in exchange.calls
+            ],
+            "final_speech": exchange.final_speech,
+            "superseded": exchange.superseded,
+            "adapter_error": exchange.adapter_error,
+            "had_chat_log": had_chat_log,
+            "tools": exchange.tool_names,
+        }
+        _LOGGER.debug("Turn: %s", json.dumps(trace, ensure_ascii=False, default=str))
+        if exchange.system_prompt is not None:
+            _LOGGER.debug(
+                "System prompt for conversation %s:\n%s",
+                exchange.conversation_id,
+                exchange.system_prompt,
+            )

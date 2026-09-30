@@ -1,11 +1,14 @@
 """Chat-log event sequencing, callback isolation, and the context adapter."""
 
+import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from homeassistant.components.conversation.chat_log import (
     AssistantContent,
     ChatLog,
+    SystemContent,
     ToolResultContent,
     UserContent,
     current_chat_log,
@@ -80,6 +83,27 @@ async def test_new_conversation(hass: HomeAssistant) -> None:
     assert exchange.agent_ids == {"agent"}
     assert exchange.context.language == "en"
     assert errors == []
+
+
+async def test_debug_log_traces_turn(hass: HomeAssistant, caplog) -> None:
+    """At debug level, each turn logs what the model saw and every tool call and result."""
+    caplog.set_level(logging.DEBUG, logger="custom_components.assist_learner")
+    capture, _, _ = _capture(hass)
+    chat_log = _chat_log(hass)
+    chat_log.llm_api.tools = [SimpleNamespace(name="HassTurnOn"), SimpleNamespace(name="GetLiveContext")]
+    chat_log.content[0] = SystemContent(content="Exposed: Living Room Lamp")
+    _run_turn(capture, chat_log, "turn on the lamp please", created=True)
+    await flush_turns(hass)
+
+    (turn_line,) = [r.getMessage() for r in caplog.records if r.getMessage().startswith("Turn: ")]
+    trace = json.loads(turn_line.removeprefix("Turn: "))
+    assert trace["text"] == "turn on the lamp please"
+    assert trace["calls"][0]["name"] == "intent__HassTurnOn"
+    assert trace["calls"][0]["args"] == {"name": "Lamp"}
+    assert trace["calls"][0]["result"]["response_type"] == "action_done"
+    assert trace["final_speech"] == "Done."
+    assert trace["tools"] == ["HassTurnOn", "GetLiveContext"]
+    assert "Exposed: Living Room Lamp" in caplog.text
 
 
 async def test_existing_conversation_is_not_first_turn(hass: HomeAssistant) -> None:

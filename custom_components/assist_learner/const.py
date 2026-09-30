@@ -11,6 +11,7 @@ CONF_THRESHOLD: Final = "threshold"
 CONF_EXTRA_DENYLIST: Final = "extra_denylist"
 CONF_LANGUAGE: Final = "language"
 CONF_REPLAY: Final = "replay_enabled"
+# Only read to point people at the pipeline agent they used before replay moved local.
 CONF_FALLBACK_AGENT: Final = "fallback_agent_id"
 
 DEFAULT_THRESHOLD: Final = 2
@@ -23,11 +24,14 @@ WATCHDOG_INTERVAL: Final = timedelta(hours=6)
 
 SENTENCES_FILENAME: Final = "assist_learner.yaml"
 METADATA_KEY: Final = "assist_learner_id"
+REPLAY_INTENT: Final = "AssistLearnerReplay"
+REPLAY_SLOT: Final = "assist_learner_entry"
 
 ISSUE_REVIEW: Final = "review_candidates"
 ISSUE_CAPTURE_PAUSED: Final = "capture_paused"
 ISSUE_WATCHDOG: Final = "capture_watchdog"
 ISSUE_EXPORT_FAILED: Final = "export_failed"
+ISSUE_REPLAY_AGENT_REMOVED: Final = "replay_agent_removed"
 
 SERVICE_APPROVE: Final = "approve"
 SERVICE_REJECT: Final = "reject"

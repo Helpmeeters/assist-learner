@@ -6,7 +6,7 @@ import yaml
 
 from homeassistant.components import conversation
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import issue_registry as ir, llm
+from homeassistant.helpers import area_registry as ar, entity_registry as er, issue_registry as ir, llm
 
 from custom_components.assist_learner.const import DOMAIN, ISSUE_EXPORT_FAILED
 from custom_components.assist_learner.exporter import (
@@ -69,6 +69,25 @@ async def test_file_validation_failure_keeps_old_file(
     assert learner.last_export_result.file_error
     assert hass.states.get("sensor.assist_learner_status").state == "error"
     assert not [p for p in sentences_file(hass).parent.iterdir() if p.suffix == ".tmp"]
+
+
+async def test_names_with_template_syntax(
+    hass: HomeAssistant, house: House, fake_llm, learner_entry
+) -> None:
+    """Entity and area names containing hassil template characters don't break export."""
+    ent_reg = er.async_get(hass)
+    entity = ent_reg.async_get_or_create(
+        "light", "test", "odd", suggested_object_id="odd", original_name="Lamp (old"
+    )
+    ent_reg.async_update_entity(entity.entity_id, area_id=house.kitchen.id)
+    hass.states.async_set(entity.entity_id, "off", {"friendly_name": "Lamp (old"})
+    ar.async_get(hass).async_create("Den [2")
+
+    learner = learner_entry.runtime_data
+    entry = await learn(hass, fake_llm, "it's too dark in here", turn_on_area("Kitchen"), house.kitchen_satellite)
+    await learner.async_approve(entry["id"])
+    assert not entry["export_error"]
+    assert "it's too dark in here" in sentences_file(hass).read_text()
 
 
 async def test_shadowing_rejected(

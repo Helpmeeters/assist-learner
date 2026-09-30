@@ -15,7 +15,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, floor_registry as fr
 from homeassistant.util import language as language_util
 
-from .const import METADATA_KEY, SENTENCES_FILENAME, STATUS_APPROVED
+from .const import (
+    METADATA_KEY,
+    REPLAY_INTENT,
+    REPLAY_SLOT,
+    SENTENCES_FILENAME,
+    STATUS_APPROVED,
+)
 from .store import LearnerStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,22 +61,26 @@ def sentences_path(hass: HomeAssistant, variant: str) -> Path:
     return Path(hass.config.path("custom_sentences", variant, SENTENCES_FILENAME))
 
 
-def is_exportable(entry: dict[str, Any]) -> bool:
-    """Approved, sentence-expressible, and not stale."""
+def is_exportable(entry: dict[str, Any], replay: bool) -> bool:
+    """Approved, not stale, and either a plain sentence or replay is enabled."""
     return (
         entry["status"] == STATUS_APPROVED
-        and not entry.get("replay_only")
+        and (replay or not entry.get("replay_only"))
         and not entry.get("stale")
     )
 
 
 def build_block(entry: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     """Return (intent type, hassil data block) for an exportable entry."""
-    call = entry["calls"][0]
-    intent_type = call["name"].partition("__")[2]
     block: dict[str, Any] = {"sentences": [entry["sentence"]]}
-    if call["slots"]:
-        block["slots"] = dict(call["slots"])
+    if entry.get("replay_only"):
+        intent_type = REPLAY_INTENT
+        block["slots"] = {REPLAY_SLOT: entry["id"]}
+    else:
+        call = entry["calls"][0]
+        intent_type = call["name"].partition("__")[2]
+        if call["slots"]:
+            block["slots"] = dict(call["slots"])
     if entry.get("room_relative"):
         block["requires_context"] = {"area": {"slot": True}}
     block["metadata"] = {METADATA_KEY: entry["id"]}
@@ -166,7 +176,8 @@ class _Validator:
         self.builtin = get_intents(variant) or {}
         self.other_docs = [_tag_custom(doc) for doc in other_docs]
         self.slot_lists = {
-            key: TextSlotList.from_strings(values) for key, values in names.items()
+            key: TextSlotList.from_strings(values, allow_template=False)
+            for key, values in names.items()
         }
         self.area_names = area_names
 
@@ -271,6 +282,7 @@ def _plan_variant(
     known: dict[str, dict[str, Any]],
     validator: _Validator,
     result: ExportResult,
+    replay: bool,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, str]]:
     """Build the new file contents. Runs in the executor."""
     existing = _read_yaml(path)
@@ -288,7 +300,7 @@ def _plan_variant(
             # Hand-edited: never rewrite it.
             kept.append((intent_type, block))
             handled.add(entry_id)
-        elif not is_exportable(entry):
+        elif not is_exportable(entry, replay):
             handled.add(entry_id)
 
     hashes: dict[str, str] = {}
@@ -298,6 +310,10 @@ def _plan_variant(
     }
     for entry in entries:
         if entry["id"] in handled:
+            continue
+        if entry.get("replay_only") and "{" in entry["sentence"]:
+            # The stored calls have no place to put a spoken number.
+            result.errors[entry["id"]] = "replayed commands can't contain numbers"
             continue
         intent_type, block = build_block(entry)
         sentence = entry["sentence"].strip().lower()
@@ -330,9 +346,12 @@ def _export_variant_sync(
     names: dict[str, list[str]],
     area_names: dict[str, str],
     result: ExportResult,
+    replay: bool,
 ) -> tuple[list[dict[str, Any]], dict[str, str], bool]:
     validator = _Validator(variant, _other_custom_docs(other_docs_dir, path), names, area_names)
-    doc, exported, hashes = _plan_variant(path, variant, entries, known, validator, result)
+    doc, exported, hashes = _plan_variant(
+        path, variant, entries, known, validator, result, replay
+    )
     text = _HEADER + yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
     current = path.read_text(encoding="utf-8") if path.is_file() else None
     if current == text or (current is None and not doc["intents"]):
@@ -342,9 +361,13 @@ def _export_variant_sync(
 
 
 async def async_export(
-    hass: HomeAssistant, store: LearnerStore, default_language: str
+    hass: HomeAssistant, store: LearnerStore, default_language: str, replay: bool
 ) -> ExportResult:
-    """Export approved entries for every language, then reload conversation."""
+    """Export approved entries for every language, then reload conversation.
+
+    With replay on, replay-only entries are written as REPLAY_INTENT sentences;
+    the replay intent handler must be registered for them to run.
+    """
     result = ExportResult()
     by_variant: dict[str, list[dict[str, Any]]] = {}
     for entry in store.entries.values():
@@ -352,7 +375,7 @@ async def async_export(
         if variant is None:
             continue
         by_variant.setdefault(variant, [])
-        if is_exportable(entry):
+        if is_exportable(entry, replay):
             by_variant[variant].append(entry)
     if (default_variant := resolve_language_variant(default_language)) is not None:
         by_variant.setdefault(default_variant, [])
@@ -372,6 +395,7 @@ async def async_export(
                 names,
                 area_names,
                 result,
+                replay,
             )
         except (ExportValidationError, OSError, yaml.YAMLError) as err:
             _LOGGER.error("Assist Learner export for %s failed: %s", variant, err)
@@ -386,9 +410,17 @@ async def async_export(
             wrote_any = True
 
     for entry_id, error in result.errors.items():
+        _LOGGER.warning("Assist Learner left %s out of the sentences file: %s", entry_id, error)
         if entry := store.get(entry_id):
             entry["export_error"] = error
     store.async_schedule_save()
+    _LOGGER.debug(
+        "Export finished: exported=%s written=%s errors=%s file_error=%s",
+        result.exported,
+        result.written,
+        result.errors,
+        result.file_error,
+    )
 
     if wrote_any:
         await hass.services.async_call("conversation", "reload", {}, blocking=True)

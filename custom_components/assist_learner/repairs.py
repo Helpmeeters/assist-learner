@@ -83,10 +83,16 @@ class ReviewCandidatesFlow(RepairsFlow):
         self._current = entry["id"]
         notes = []
         if entry.get("replay_only"):
-            notes.append(
-                f"This can't be a local sentence ({entry['replay_only_reason']}); "
-                "approving it only enables the optional replay agent."
+            note = (
+                f"This can't be an ordinary sentence ({entry['replay_only_reason']}), "
+                "so Assist Learner replays it locally."
             )
+            if not learner.replay:
+                note += (
+                    " It only runs once \"Also learn multi-step commands and scripts\" "
+                    "is turned on in the Assist Learner options."
+                )
+            notes.append(note)
         if entry.get("export_error"):
             notes.append(f"Last export problem: {entry['export_error']}")
         return self.async_show_form(
