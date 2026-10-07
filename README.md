@@ -7,6 +7,8 @@ Turn the commands your LLM conversation agent keeps handling into reviewed, loca
 
 Assist Learner writes one file, `config/custom_sentences/<language>/assist_learner.yaml`. That file is plain Home Assistant custom-sentence YAML, so it keeps working even if you uninstall the integration.
 
+<img src="https://raw.githubusercontent.com/Helpmeeters/assist-learner/main/docs/images/repairs-list.png" alt="Settings > Repairs showing &quot;2 learned commands to review&quot; from Helpmeet: Assist Learner" width="650">
+
 ## How it works
 
 1. You talk to your usual LLM agent (OpenAI, Anthropic, Google, Ollama, and so on). Its configuration doesn't change.
@@ -14,6 +16,11 @@ Assist Learner writes one file, `config/custom_sentences/<language>/assist_learn
 3. Once the same wording has produced the same actions twice (configurable), it appears in **Settings > Repairs** as a learned command to review. The review shows the entities it actually affected.
 4. You approve it (optionally editing the wording), reject it (it will never be proposed again), or choose **Decide when heard again**, which removes it from Repairs until you say it again. It then comes back with its updated count.
 5. Approved commands are validated and written to the sentences file, and Assist reloads. From then on, with **Prefer handling commands locally** turned on in your Assist pipeline, the local matcher answers before the LLM is ever called.
+
+<p>
+  <img src="https://raw.githubusercontent.com/Helpmeeters/assist-learner/main/docs/images/review-too-dark-in-here.png" alt="Review dialog for &quot;it's too dark in here&quot;: turn on the lights in whichever area the speaking device is in, which affected the kitchen lights" width="400">
+  <img src="https://raw.githubusercontent.com/Helpmeeters/assist-learner/main/docs/images/review-heading-to-bed.png" alt="Review dialog for &quot;I'm heading to bed&quot;: turn off the lights in the Living Room" width="400">
+</p>
 
 Room-relative commands stay room-relative. If you said "it's too dark in here" to the kitchen speaker and the LLM turned on the kitchen lights, the learned sentence turns on the lights in whichever room's device hears it. On a device with no area it matches nothing, rather than turning on every light in the house.
 
