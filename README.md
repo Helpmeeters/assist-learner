@@ -1,4 +1,4 @@
-# Assist Learner
+# Helpmeet: Assist Learner
 
 Turn the commands your LLM conversation agent keeps handling into reviewed, local Assist sentences, so they run instantly without the LLM.
 
@@ -34,9 +34,9 @@ Commands that can't be written as one ordinary sentence (several actions, or scr
 
 ## Install
 
-1. In HACS, add this repository as a custom repository (type: Integration) and install **Assist Learner**.
+1. In HACS, add this repository as a custom repository (type: Integration) and install **Helpmeet: Assist Learner**.
 2. Restart Home Assistant.
-3. Go to **Settings > Devices & services > Add integration > Assist Learner**.
+3. Go to **Settings > Devices & services > Add integration > Helpmeet: Assist Learner**.
 
 The single setup screen has these options:
 
@@ -105,12 +105,14 @@ Each finished turn then writes to `home-assistant.log`:
 
 Remove the integration from **Devices & services**, then uninstall it in HACS. `custom_sentences/<language>/assist_learner.yaml` is left in place on purpose, so your learned sentences keep working. Multi-step commands and scripts need the integration to run, so turn that option off before removing it, or they'll answer with an error. Delete that file (and call `conversation.reload` or restart) if you want them gone too.
 
-## Development
+## Contributing
 
-```bash
-uv venv -p 3.14
-uv pip install pytest-homeassistant-custom-component 'hassil==3.12.1' 'home-assistant-intents==2026.8.28' 'gazetteer-matcher==1.1.0'
-.venv/bin/python -m pytest -q
-```
+Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and what to include in a bug report, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities privately.
 
-The end-to-end tests drive a fake LLM agent through the real chat log, Assist tools, and intents, then check the exported sentence against the real default agent. That includes confirming that a sentence learned in the kitchen turns on only the bedroom lamp when said in the bedroom. A devcontainer is included.
+## Written with AI assistance
+
+Much of this integration's code, tests, and documentation was written with the help of AI coding assistants, then reviewed, tested, and directed by a human maintainer. Its behavior is covered by end-to-end tests that run against both Home Assistant stable and beta. If something looks wrong, please [open an issue](https://github.com/Helpmeeters/assist-learner/issues).
+
+## License
+
+[MIT](LICENSE). Assist Learner is part of Helpmeet, a family of Home Assistant integrations.

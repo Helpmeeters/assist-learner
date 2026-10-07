@@ -1,6 +1,6 @@
 {
   "domain": "assist_learner",
-  "name": "Assist Learner",
+  "name": "Helpmeet: Assist Learner",
   "after_dependencies": ["assist_pipeline"],
   "codeowners": ["@andrewreutter"],
   "config_flow": true,

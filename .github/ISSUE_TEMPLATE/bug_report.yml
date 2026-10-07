@@ -1,0 +1,72 @@
+name: Bug report
+description: Something isn't learned, exported, or replayed the way it should be.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you said, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: From **Settings > About**.
+      placeholder: "2026.9.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Release channel
+      options:
+        - Stable
+        - Beta
+        - Dev
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Assist Learner version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: LLM conversation agent
+      description: The integration and model your Assist pipeline uses.
+      placeholder: "OpenAI, gpt-5-mini"
+    validations:
+      required: true
+  - type: dropdown
+    id: prefer-local
+    attributes:
+      label: Is "Prefer handling commands locally" on in that pipeline?
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: repairs
+    attributes:
+      label: Repair issues shown
+      description: Any Assist Learner issues in **Settings > Repairs**, such as "stopped learning".
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log
+      description: >
+        Turn on debug logging (see the README), repeat the command, and paste the Assist Learner lines.
+        These include your utterances and entity IDs unredacted, so trim anything you don't want to share.
+      render: text
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Drag in a diagnostics download from the Assist Learner integration page. Utterances and entity IDs are redacted.

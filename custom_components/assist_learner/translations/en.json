@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Assist Learner",
+        "title": "Helpmeet: Assist Learner",
         "description": "Assist Learner watches your LLM conversation agent. When the same command succeeds repeatedly, it proposes a local sentence for you to approve in Repairs. {prefer_local_note}\n\nCommands that touch these domains are never learned: {denylist_floor}.",
         "data": {
           "threshold": "Agreeing runs before proposing",
@@ -25,7 +25,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Assist Learner",
+        "title": "Helpmeet: Assist Learner",
         "description": "{prefer_local_note}\n\nCommands that touch these domains are never learned: {denylist_floor}.",
         "data": {
           "threshold": "Agreeing runs before proposing",
@@ -60,11 +60,11 @@
     },
     "capture_paused": {
       "title": "Assist Learner stopped learning",
-      "description": "Assist Learner can't read conversations on this Home Assistant version: {reason}.\n\nIt relies on internal parts of the conversation integration that changed. Learned sentences keep working. Update Assist Learner, or report this at https://github.com/andrewreutter/assist-learner/issues."
+      "description": "Assist Learner can't read conversations on this Home Assistant version: {reason}.\n\nIt relies on internal parts of the conversation integration that changed. Learned sentences keep working. Update Assist Learner, or report this at https://github.com/Helpmeeters/assist-learner/issues."
     },
     "capture_watchdog": {
       "title": "Assist Learner hasn't learned anything in a week",
-      "description": "Conversations are happening, but Assist Learner hasn't recognized any LLM actions in them for 7 days. This usually means a Home Assistant update changed how conversations are logged. Update Assist Learner, or report this at https://github.com/andrewreutter/assist-learner/issues."
+      "description": "Conversations are happening, but Assist Learner hasn't recognized any LLM actions in them for 7 days. This usually means a Home Assistant update changed how conversations are logged. Update Assist Learner, or report this at https://github.com/Helpmeeters/assist-learner/issues."
     },
     "export_failed": {
       "title": "Assist Learner couldn't write some sentences",

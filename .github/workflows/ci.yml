@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Catch core changes to the internal chat-log surface before users do.
+    - cron: "0 6 * * 1"
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.channel }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv -p 3.14
+      - name: Install Home Assistant test harness (${{ matrix.channel }})
+        run: |
+          if [ "${{ matrix.channel }}" = "beta" ]; then
+            uv pip install --prerelease=allow pytest-homeassistant-custom-component
+          else
+            uv pip install pytest-homeassistant-custom-component
+          fi
+      - name: Install conversation requirements pinned by the installed core
+        run: |
+          uv run python - <<'EOF' > requirements.txt
+          import json, pathlib, homeassistant
+          base = pathlib.Path(homeassistant.__file__).parent / "components"
+          reqs = set()
+          for name in ("conversation", "intent", "llm", "repairs", "sensor", "diagnostics"):
+              manifest = json.loads((base / name / "manifest.json").read_text())
+              reqs.update(manifest.get("requirements", []))
+          print("\n".join(sorted(reqs)))
+          EOF
+          uv pip install -r requirements.txt
+      - run: uv run python -c "import homeassistant.const as c; print(c.__version__)"
+      - run: uv run pytest -q
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration

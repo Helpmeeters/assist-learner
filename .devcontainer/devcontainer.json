@@ -1,5 +1,5 @@
 {
-  "name": "Assist Learner",
+  "name": "Helpmeet: Assist Learner",
   "image": "mcr.microsoft.com/devcontainers/python:3.14",
   "features": {
     "ghcr.io/va-h/devcontainers-features/uv:1": {}
