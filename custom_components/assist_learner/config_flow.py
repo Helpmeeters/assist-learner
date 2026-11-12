@@ -22,7 +22,6 @@ from .const import (
     DOMAIN,
 )
 from .context_adapter import unsupported_reason
-from .denylist import FLOOR_DOMAINS
 
 HOME_ASSISTANT_AGENT = "conversation.home_assistant"
 
@@ -63,7 +62,7 @@ def _schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
             CONF_EXTRA_DENYLIST, default=defaults.get(CONF_EXTRA_DENYLIST, [])
         ): selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=["cover", "climate", "media_player", "switch", "script", "siren", "water_heater"],
+                options=["lock", "alarm_control_panel", "valve", "cover", "climate", "media_player", "switch", "script", "siren", "water_heater"],
                 multiple=True,
                 custom_value=True,
             )
@@ -85,7 +84,7 @@ def _placeholders(hass: HomeAssistant) -> dict[str, str]:
         )
     else:
         note = ""
-    return {"prefer_local_note": note, "denylist_floor": ", ".join(sorted(FLOOR_DOMAINS))}
+    return {"prefer_local_note": note}
 
 
 def _clean(user_input: dict[str, Any]) -> dict[str, Any]:

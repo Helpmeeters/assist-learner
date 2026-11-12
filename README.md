@@ -28,7 +28,7 @@ Room-relative commands stay room-relative. If you said "it's too dark in here" t
 
 - Commands that read state or answer questions ("what's the temperature?"), or that used any read tool.
 - Follow-ups and corrections ("no, the other one"), clarifying questions, and commands that partly failed.
-- Anything that touched a **lock, alarm panel, valve, or garage or gate cover**. This floor can't be turned off. You can add more domains in the options.
+- Anything in a domain you've chosen to block in the options (for example `lock`, `alarm_control_panel`, `valve`, or `cover`). Nothing is blocked by default.
 - Utterances with fewer than 3 words, stop phrases ("okay", "do it"), sentence-template characters, or numbers that don't map to a slot.
 
 Commands that can't be written as one ordinary sentence (several actions, or scripts) can still be learned if you turn on **Also learn multi-step commands and scripts** (see below).
@@ -50,7 +50,7 @@ The single setup screen has these options:
 | Option | Default | Meaning |
 |---|---|---|
 | Agreeing runs before proposing | 2 | How many times the same wording must produce the same actions |
-| Extra domains to never learn | none | Added to the built-in floor |
+| Domains to never learn | none | Commands touching these domains are never learned |
 | Language | your HA language | Used when a conversation didn't report one |
 | Also learn multi-step commands and scripts | off | Replays approved commands that do several things or run a script, locally |
 

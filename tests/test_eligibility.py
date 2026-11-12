@@ -162,21 +162,23 @@ async def test_same_command_in_two_rooms_agrees(hass: HomeAssistant, house: Hous
 
 
 @pytest.mark.parametrize(
-    ("entity_id", "attributes", "blocked"),
+    ("entity_id", "attributes"),
     [
-        ("lock.front_door", {}, True),
-        ("alarm_control_panel.home", {}, True),
-        ("valve.main_water", {}, True),
-        ("cover.garage", {"device_class": "garage"}, True),
-        ("cover.driveway", {"device_class": "gate"}, True),
-        ("cover.blinds", {"device_class": "blind"}, False),
-        ("light.kitchen_ceiling", {}, False),
+        ("lock.front_door", {}),
+        ("alarm_control_panel.home", {}),
+        ("valve.main_water", {}),
+        ("cover.garage", {"device_class": "garage"}),
+        ("cover.driveway", {"device_class": "gate"}),
+        ("cover.blinds", {"device_class": "blind"}),
+        ("light.kitchen_ceiling", {}),
     ],
 )
-async def test_denylist(hass: HomeAssistant, entity_id, attributes, blocked) -> None:
-    """The floor blocks locks, alarms, valves, and garage or gate covers."""
+async def test_denylist_default_allows_everything(
+    hass: HomeAssistant, entity_id, attributes
+) -> None:
+    """With no domains configured, nothing is blocked."""
     hass.states.async_set(entity_id, "closed", attributes)
-    assert bool(blocked_entities(hass, [entity_id])) is blocked
+    assert blocked_entities(hass, [entity_id]) == []
 
 
 async def test_denylist_extra_domains(hass: HomeAssistant) -> None:
