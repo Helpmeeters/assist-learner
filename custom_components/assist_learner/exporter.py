@@ -70,8 +70,31 @@ def is_exportable(entry: dict[str, Any], replay: bool) -> bool:
     )
 
 
-def build_block(entry: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-    """Return (intent type, hassil data block) for an exportable entry."""
+def _response_key(
+    intent_type: str, slots: dict[str, Any], responses: dict[str, Any]
+) -> str | None:
+    """The built-in response key named after the entry's single domain, if one exists.
+
+    The default reply for an intent only names a fixed list of domains, so a lock
+    would get "Turned off None". The built-in sentences pick a domain-specific
+    reply (for example "Unlocking") with a `response` key; `responses` is the same
+    table the default agent uses, so we only reuse keys that really exist.
+    """
+    domain = slots.get("domain")
+    if isinstance(domain, list):
+        domain = domain[0] if len(domain) == 1 else None
+    if isinstance(domain, str) and domain != "default" and domain in (responses.get(intent_type) or {}):
+        return domain
+    return None
+
+
+def build_block(
+    entry: dict[str, Any], responses: dict[str, Any] | None = None
+) -> tuple[str, dict[str, Any]]:
+    """Return (intent type, hassil data block) for an exportable entry.
+
+    `responses` is the built-in `responses.intents` table for the language.
+    """
     block: dict[str, Any] = {"sentences": [entry["sentence"]]}
     if entry.get("replay_only"):
         intent_type = REPLAY_INTENT
@@ -81,6 +104,8 @@ def build_block(entry: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         intent_type = call["name"].partition("__")[2]
         if call["slots"]:
             block["slots"] = dict(call["slots"])
+            if response := _response_key(intent_type, block["slots"], responses or {}):
+                block["response"] = response
     if entry.get("room_relative"):
         block["requires_context"] = {"area": {"slot": True}}
     block["metadata"] = {METADATA_KEY: entry["id"]}
@@ -174,6 +199,7 @@ class _Validator:
 
         self.variant = variant
         self.builtin = get_intents(variant) or {}
+        self.responses: dict[str, Any] = (self.builtin.get("responses") or {}).get("intents") or {}
         self.other_docs = [_tag_custom(doc) for doc in other_docs]
         self.slot_lists = {
             key: TextSlotList.from_strings(values, allow_template=False)
@@ -315,7 +341,7 @@ def _plan_variant(
             # The stored calls have no place to put a spoken number.
             result.errors[entry["id"]] = "replayed commands can't contain numbers"
             continue
-        intent_type, block = build_block(entry)
+        intent_type, block = build_block(entry, validator.responses)
         sentence = entry["sentence"].strip().lower()
         if sentence in seen_sentences:
             result.errors[entry["id"]] = "another learned sentence has the same wording"

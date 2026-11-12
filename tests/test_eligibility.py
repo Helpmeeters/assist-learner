@@ -181,6 +181,39 @@ async def test_denylist_default_allows_everything(
     assert blocked_entities(hass, [entity_id]) == []
 
 
+@pytest.mark.parametrize(
+    ("intent", "domain", "response"),
+    [
+        ("HassTurnOff", ["lock"], "lock"),
+        ("HassTurnOff", "lock", "lock"),
+        ("HassTurnOn", ["lock"], "lock"),
+        ("HassTurnOff", ["valve"], "valve"),
+        ("HassTurnOn", ["scene"], "scene"),
+        ("HassTurnOff", ["scene"], None),
+        ("HassTurnOff", ["light"], None),
+        ("HassTurnOff", ["lock", "valve"], None),
+    ],
+)
+def test_build_block_response_key(intent, domain, response) -> None:
+    """Lock-like domains reuse the built-in reply instead of 'Turned off None'."""
+    from custom_components.assist_learner.exporter import build_block
+
+    # Shaped like the built-in responses.intents table.
+    responses = {
+        "HassTurnOn": {"default": "x", "lights_area": "x", "lock": "x", "valve": "x", "scene": "x"},
+        "HassTurnOff": {"default": "x", "lights_area": "x", "lock": "x", "valve": "x", "cover": "x"},
+    }
+    entry = {
+        "id": "abc",
+        "sentence": "undo the lock",
+        "calls": [{"name": f"intent__{intent}", "slots": {"name": "Front Door", "domain": domain}}],
+    }
+    _, block = build_block(entry, responses)
+    assert block.get("response") == response
+    _, block = build_block(entry)
+    assert "response" not in block
+
+
 async def test_denylist_extra_domains(hass: HomeAssistant) -> None:
     """Users can add domains."""
     assert blocked_entities(hass, ["switch.heater"], ["switch"]) == ["switch.heater"]
