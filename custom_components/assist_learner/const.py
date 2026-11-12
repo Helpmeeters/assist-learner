@@ -41,6 +41,14 @@ SERVICE_LEARN_LAST: Final = "learn_last"
 ATTR_CANDIDATE_ID: Final = "candidate_id"
 ATTR_SENTENCE: Final = "sentence"
 
+DECISION_APPROVE: Final = "approve"
+DECISION_REJECT: Final = "reject"
+DECISION_DEFER: Final = "defer"
+DECISIONS: Final = (DECISION_APPROVE, DECISION_REJECT, DECISION_DEFER)
+
+CARD_FILENAME: Final = "assist-learner-card.js"
+CARD_URL: Final = f"/{DOMAIN}/{CARD_FILENAME}"
+
 STATUS_CANDIDATE: Final = "candidate"
 STATUS_PROPOSED: Final = "proposed"
 STATUS_DEFERRED: Final = "deferred"

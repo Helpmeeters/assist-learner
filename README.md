@@ -56,9 +56,27 @@ The single setup screen has these options:
 
 Want to see it work right away? Say a command to your LLM agent once, then run the `assist_learner.learn_last` action. That sends the command straight to Repairs for review.
 
+## Dashboard card
+
+Assist Learner includes a dashboard card, and loads it for you, so there's no resource to add. After installing or updating, restart Home Assistant and refresh your browser. Then edit a dashboard, choose **Add card**, and pick **Assist Learner**. Or add it in YAML:
+
+```yaml
+type: custom:assist-learner-card
+```
+
+Collapsed, the card shows how many learned commands are waiting for review, and how many different commands Assist Learner has captured all-time. Tap it to expand the list of commands waiting for review. For each one you can edit the wording, then **Approve** it, choose **Later** (decide when heard again), or **Reject** it (never proposed again). With two or more waiting, tick several and act on them all at once. The list updates live, including when you review in Repairs instead.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `entity` | the Assist Learner status sensor | Where the collapsed counts come from |
+| `title` | `Assist Learner` | Card heading |
+| `expanded` | `false` | Start with the review list open |
+
+Anyone who can see the dashboard sees the counts. Only administrators can open the list and review commands, the same as in Repairs.
+
 ## Status and actions
 
-`sensor.assist_learner_status` is `listening`, `paused`, or `error`. Its attributes have counts of candidates, proposed, deferred, approved, rejected, and stale commands, plus the last export time, the last error, and why the most recent command was skipped.
+`sensor.assist_learner_status` is `listening`, `paused`, or `error`. Its attributes have counts of candidates, proposed, deferred, approved, rejected, and stale commands, plus `captured_total` (every distinct command captured, including ones since forgotten), the last export time, the last error, and why the most recent command was skipped.
 
 | Action | What it does |
 |---|---|
@@ -87,6 +105,7 @@ Commands with a spoken number (like "set it to 40 percent") aren't replayed yet.
 
 ## Trust and privacy
 
+- **Dashboard card:** served by the integration at `/assist_learner/assist-learner-card.js`. It contains no utterances. The review list is fetched over an administrator-only websocket command.
 - **Files written:** only `config/custom_sentences/<language>/assist_learner.yaml`. Writes are atomic: a temp file is validated, then swapped in. Every sentence is parsed with hassil and must recognize its original utterance before it's included. The merged result is checked the same way the built-in agent loads it, so a bad entry can't break your other local commands.
 - **Hand edits:** you can edit the YAML. Assist Learner never rewrites an entry you've edited, and keeps any entries you add yourself.
 - **Stored data:** raw utterances, the actions taken, and the affected entity IDs are kept in `config/.storage/assist_learner`. Diagnostics downloads redact utterances and entity IDs. Debug logging, which is off by default, writes utterances, tool calls, and the agent's full system prompt to `home-assistant.log` unredacted.

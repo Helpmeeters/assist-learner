@@ -1,5 +1,7 @@
 """Assist Learner: turn repeated LLM fallbacks into reviewed local sentences."""
 
+from pathlib import Path
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -18,11 +20,16 @@ from homeassistant.helpers import (
     intent,
     issue_registry as ir,
 )
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
+from . import websocket
 from .const import (
     ATTR_CANDIDATE_ID,
     ATTR_SENTENCE,
+    CARD_FILENAME,
+    CARD_URL,
     CONF_FALLBACK_AGENT,
     DOMAIN,
     ISSUE_REPLAY_AGENT_REMOVED,
@@ -31,6 +38,7 @@ from .const import (
     SERVICE_FORGET,
     SERVICE_LEARN_LAST,
     SERVICE_REJECT,
+    SIGNAL_UPDATED,
 )
 from .learner import Learner
 from .replay import ReplayIntentHandler
@@ -101,7 +109,24 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         learn_last,
         supports_response=SupportsResponse.OPTIONAL,
     )
+    websocket.async_register(hass)
+    await _async_register_card(hass)
     return True
+
+
+async def _async_register_card(hass: HomeAssistant) -> None:
+    """Serve the dashboard card and load it on every frontend page."""
+    # Frontend is a default integration; it's only missing in recovery mode and tests.
+    if "frontend" not in hass.config.components:
+        return
+    from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
+    from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
+
+    integration = await async_get_integration(hass, DOMAIN)
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARD_URL, str(Path(__file__).parent / "frontend" / CARD_FILENAME))]
+    )
+    add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}")
 
 
 def _pipelines_using(hass: HomeAssistant, agent_id: str) -> list[str]:
@@ -157,6 +182,7 @@ async def async_setup_entry(
     _async_retire_replay_agent(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_update))
+    async_dispatcher_send(hass, SIGNAL_UPDATED)
     return True
 
 
@@ -174,4 +200,5 @@ async def async_unload_entry(
     if unloaded:
         intent.async_remove(hass, REPLAY_INTENT)
         await entry.runtime_data.async_stop()
+        async_dispatcher_send(hass, SIGNAL_UPDATED)
     return unloaded

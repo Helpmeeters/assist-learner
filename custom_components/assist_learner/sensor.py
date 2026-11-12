@@ -22,7 +22,10 @@ async def async_setup_entry(
 
 
 class LearnerStatusSensor(SensorEntity):
-    """Listening, paused, or error, with counts as attributes."""
+    """Listening, paused, or error, with counts as attributes.
+
+    The dashboard card reads `proposed` and `captured_total` from here.
+    """
 
     _attr_has_entity_name = True
     _attr_translation_key = "status"

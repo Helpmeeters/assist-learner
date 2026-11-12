@@ -32,6 +32,7 @@ The end-to-end tests drive a fake LLM agent through the real chat log, Assist to
 - Run `ruff check` and `ruff format` (settings are in `pyproject.toml`).
 - Code that touches conversation internals belongs in `context_adapter.py`, behind its version check, so a core change pauses capture instead of breaking it.
 - If you change `strings.json`, copy the same change into `translations/en.json`.
+- The dashboard card (`frontend/assist-learner-card.js`) is plain JavaScript with no build step. Its URL carries the manifest `version` to bust browser caches, so bump the version when the card changes.
 - CI runs the tests against Home Assistant stable and beta, plus hassfest and the HACS validation action. All of them need to pass.
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).

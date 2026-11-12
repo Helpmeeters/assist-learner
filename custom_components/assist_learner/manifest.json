@@ -1,7 +1,7 @@
 {
   "domain": "assist_learner",
   "name": "Helpmeet: Assist Learner",
-  "after_dependencies": ["assist_pipeline"],
+  "after_dependencies": ["assist_pipeline", "frontend", "http", "websocket_api"],
   "codeowners": ["@andrewreutter"],
   "config_flow": true,
   "dependencies": ["conversation", "intent", "llm", "repairs"],

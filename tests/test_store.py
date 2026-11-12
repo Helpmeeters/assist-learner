@@ -59,6 +59,43 @@ async def test_forget_allows_relearning(hass: HomeAssistant) -> None:
     assert store.async_record(evaluation(), "x", threshold=2) is not None
 
 
+async def test_captured_total_counts_new_phrases_and_survives_forget(hass: HomeAssistant) -> None:
+    """Each new wording counts once, repeats don't, and forgetting doesn't lower it."""
+    store = LearnerStore(hass)
+    entry = store.async_record(evaluation("k1"), "x", threshold=2)
+    store.async_record(evaluation("k1"), "x", threshold=2)
+    store.async_record(evaluation("k2"), "y", threshold=2)
+    assert store.counts()["captured_total"] == 2
+    store.async_forget(entry["id"])
+    assert store.counts()["captured_total"] == 2
+
+
+async def test_backfills_captured_total_from_minor_version_1(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    """Data saved before the counter existed starts it at the number of stored entries."""
+    hass_storage[STORAGE_KEY] = {
+        "version": 2,
+        "minor_version": 1,
+        "key": STORAGE_KEY,
+        "data": {
+            "entries": {
+                "a": {"id": "a", "key": "ka", "status": "approved", "created": "1", "stale": False,
+                      "calls": []},
+                "b": {"id": "b", "key": "kb", "status": "rejected", "created": "2", "stale": False,
+                      "calls": []},
+            },
+            "rejected_keys": ["kb"],
+            "last_eligible": None,
+        },
+    }
+    store = LearnerStore(hass)
+    await store.async_load()
+    assert store.counts()["captured_total"] == 2
+    store.async_record(evaluation("k3"), "z", threshold=2)
+    assert store.counts()["captured_total"] == 3
+
+
 async def test_persists_across_restart(hass: HomeAssistant, hass_storage: dict[str, Any]) -> None:
     """Entries survive a reload from disk."""
     store = LearnerStore(hass)
@@ -69,7 +106,9 @@ async def test_persists_across_restart(hass: HomeAssistant, hass_storage: dict[s
     reloaded = LearnerStore(hass)
     await reloaded.async_load()
     assert reloaded.get(entry["id"])["status"] == "approved"
+    assert reloaded.counts()["captured_total"] == 1
     assert hass_storage[STORAGE_KEY]["version"] == 2
+    assert hass_storage[STORAGE_KEY]["minor_version"] == 2
 
 
 async def test_migrates_pre_2026_9_tool_names(
@@ -96,6 +135,7 @@ async def test_migrates_pre_2026_9_tool_names(
     assert store.get("a")["calls"][0]["name"] == "light__HassLightSet"
     assert store.get("a")["stale"] is False
     assert store.get("b")["stale"] is True
+    assert store.counts()["captured_total"] == 2
 
 
 def test_migrate_tool_name() -> None:

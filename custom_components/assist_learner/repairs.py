@@ -45,6 +45,25 @@ def describe_entities(hass: HomeAssistant, entry: dict[str, Any]) -> str:
     return ", ".join(names) or "none"
 
 
+def describe_notes(learner: Learner, entry: dict[str, Any]) -> str:
+    """Caveats worth reading before approving."""
+    notes = []
+    if entry.get("replay_only"):
+        note = (
+            f"This can't be an ordinary sentence ({entry['replay_only_reason']}), "
+            "so Assist Learner replays it locally."
+        )
+        if not learner.replay:
+            note += (
+                " It only runs once \"Also learn multi-step commands and scripts\" "
+                "is turned on in the Assist Learner options."
+            )
+        notes.append(note)
+    if entry.get("export_error"):
+        notes.append(f"Last export problem: {entry['export_error']}")
+    return " ".join(notes)
+
+
 class ReviewCandidatesFlow(RepairsFlow):
     """Approve, reject, edit, or defer each proposed sentence."""
 
@@ -81,20 +100,6 @@ class ReviewCandidatesFlow(RepairsFlow):
 
         entry = pending[0]
         self._current = entry["id"]
-        notes = []
-        if entry.get("replay_only"):
-            note = (
-                f"This can't be an ordinary sentence ({entry['replay_only_reason']}), "
-                "so Assist Learner replays it locally."
-            )
-            if not learner.replay:
-                note += (
-                    " It only runs once \"Also learn multi-step commands and scripts\" "
-                    "is turned on in the Assist Learner options."
-                )
-            notes.append(note)
-        if entry.get("export_error"):
-            notes.append(f"Last export problem: {entry['export_error']}")
         return self.async_show_form(
             step_id="review",
             data_schema=vol.Schema(
@@ -115,7 +120,7 @@ class ReviewCandidatesFlow(RepairsFlow):
                 "entities": describe_entities(self.hass, entry),
                 "count": str(entry["count"]),
                 "remaining": str(len(pending)),
-                "notes": " ".join(notes),
+                "notes": describe_notes(learner, entry),
             },
         )
 

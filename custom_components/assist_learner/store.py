@@ -18,6 +18,7 @@ from .const import (
 from .eligibility import Evaluation
 
 STORAGE_VERSION = 2
+STORAGE_MINOR_VERSION = 2
 STORAGE_KEY = DOMAIN
 SAVE_DELAY = 10
 
@@ -88,11 +89,14 @@ class _VersionedStore(Store[dict[str, Any]]):
     ) -> dict[str, Any]:
         if old_major_version < 2:
             old_data = _migrate_v1(old_data)
+        if old_major_version < 2 or old_minor_version < 2:
+            # Forgotten entries are already gone, so this is a lower bound.
+            old_data.setdefault("captured_total", len(old_data.get("entries", {})))
         return old_data
 
 
 def _empty() -> dict[str, Any]:
-    return {"entries": {}, "rejected_keys": [], "last_eligible": None}
+    return {"entries": {}, "rejected_keys": [], "last_eligible": None, "captured_total": 0}
 
 
 class LearnerStore:
@@ -100,7 +104,9 @@ class LearnerStore:
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the store."""
-        self._store = _VersionedStore(hass, STORAGE_VERSION, STORAGE_KEY)
+        self._store = _VersionedStore(
+            hass, STORAGE_VERSION, STORAGE_KEY, minor_version=STORAGE_MINOR_VERSION
+        )
         self.data: dict[str, Any] = _empty()
 
     async def async_load(self) -> None:
@@ -159,6 +165,7 @@ class LearnerStore:
                 "user_sentence": False,
             }
             self.entries[entry["id"]] = entry
+            self.data["captured_total"] += 1
         entry.update(
             {
                 "sentence": entry.get("sentence") if entry["user_sentence"] else evaluation.sentence,
@@ -266,4 +273,5 @@ class LearnerStore:
             "approved": sum(e["status"] == STATUS_APPROVED for e in entries),
             "rejected": sum(e["status"] == STATUS_REJECTED for e in entries),
             "stale": sum(bool(e["stale"]) for e in entries),
+            "captured_total": self.data["captured_total"],
         }

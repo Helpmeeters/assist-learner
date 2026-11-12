@@ -23,6 +23,8 @@ from .const import (
     CONF_LANGUAGE,
     CONF_REPLAY,
     CONF_THRESHOLD,
+    DECISION_APPROVE,
+    DECISION_REJECT,
     DEFAULT_THRESHOLD,
     DOMAIN,
     IDLE_TIMEOUT,
@@ -246,6 +248,33 @@ class Learner:
         self.async_update_review_issue()
         self._notify()
         return True
+
+    async def async_review(
+        self, decisions: list[tuple[str, str, str | None]]
+    ) -> list[str]:
+        """Apply (entry_id, decision, sentence) review decisions with one export.
+
+        Returns the ids that couldn't be applied.
+        """
+        failed = []
+        export = False
+        for entry_id, decision, sentence in decisions:
+            if decision == DECISION_APPROVE:
+                applied = self.store.async_approve(entry_id, sentence)
+                export |= applied
+            elif decision == DECISION_REJECT:
+                applied = self.store.async_reject(entry_id)
+                export |= applied
+            else:
+                applied = self.store.async_defer(entry_id)
+            if not applied:
+                failed.append(entry_id)
+        self.async_update_review_issue()
+        if export:
+            await self.async_export()
+        else:
+            self._notify()
+        return failed
 
     async def async_forget(self, entry_id: str) -> bool:
         """Delete an entry and remove it from the file."""
