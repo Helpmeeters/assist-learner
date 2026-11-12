@@ -410,7 +410,8 @@ class AssistLearnerCard extends HTMLElement {
   }
 }
 
-if (!customElements.get(CARD_TYPE)) {
+const register = () => {
+  if (customElements.get(CARD_TYPE)) return;
   customElements.define(CARD_TYPE, AssistLearnerCard);
   window.customCards = window.customCards || [];
   window.customCards.push({
@@ -420,4 +421,13 @@ if (!customElements.get(CARD_TYPE)) {
     preview: true,
     documentationURL: "https://github.com/Helpmeeters/assist-learner#dashboard-card",
   });
-}
+};
+
+// On browsers without native scoped element registries (Firefox), the frontend replaces
+// window.customElements with a polyfill while it boots, and this module can load first.
+// A card defined before that is invisible to Home Assistant, so the card picker spins forever.
+// The app defines <home-assistant> after installing the polyfill.
+Promise.race([
+  customElements.whenDefined("home-assistant"),
+  new Promise((resolve) => setTimeout(resolve, 10000)),
+]).then(register);

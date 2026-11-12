@@ -1,5 +1,7 @@
 """Assist Learner: turn repeated LLM fallbacks into reviewed local sentences."""
 
+import hashlib
+import logging
 from pathlib import Path
 
 import voluptuous as vol
@@ -22,8 +24,6 @@ from homeassistant.helpers import (
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.loader import async_get_integration
-
 from . import websocket
 from .const import (
     ATTR_CANDIDATE_ID,
@@ -42,6 +42,8 @@ from .const import (
 )
 from .learner import Learner
 from .replay import ReplayIntentHandler
+
+_LOGGER = logging.getLogger(__name__)
 
 type AssistLearnerConfigEntry = ConfigEntry[Learner]
 
@@ -118,15 +120,20 @@ async def _async_register_card(hass: HomeAssistant) -> None:
     """Serve the dashboard card and load it on every frontend page."""
     # Frontend is a default integration; it's only missing in recovery mode and tests.
     if "frontend" not in hass.config.components:
+        _LOGGER.info("Frontend isn't loaded, so the Assist Learner dashboard card isn't available")
         return
     from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
     from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
-    integration = await async_get_integration(hass, DOMAIN)
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_URL, str(Path(__file__).parent / "frontend" / CARD_FILENAME))]
+    path = Path(__file__).parent / "frontend" / CARD_FILENAME
+    await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(path))])
+    # The file is cached for a month, so the URL changes whenever its contents do.
+    digest = await hass.async_add_executor_job(
+        lambda: hashlib.sha256(path.read_bytes()).hexdigest()[:12]
     )
-    add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}")
+    url = f"{CARD_URL}?v={digest}"
+    add_extra_js_url(hass, url)
+    _LOGGER.debug("Dashboard card served at %s and loaded on every frontend page", url)
 
 
 def _pipelines_using(hass: HomeAssistant, agent_id: str) -> list[str]:
