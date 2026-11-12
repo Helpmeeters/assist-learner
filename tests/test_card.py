@@ -1,7 +1,10 @@
 """Dashboard card: websocket review API, and serving the card itself."""
 
+import hashlib
 from typing import Any
 from unittest.mock import patch
+
+import pytest
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
@@ -132,6 +135,16 @@ async def test_review_requires_admin(
     assert msg["error"]["code"] == "unauthorized"
 
 
+async def test_card_skip_is_logged_without_the_frontend(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture, fake_llm
+) -> None:
+    """Without the frontend (recovery mode), the missing card is logged rather than silent."""
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    assert "dashboard card isn't available" in caplog.text
+
+
 async def test_card_is_served_and_loaded_with_the_frontend(
     hass: HomeAssistant, hass_client: ClientSessionGenerator, fake_llm
 ) -> None:
@@ -145,7 +158,9 @@ async def test_card_is_served_and_loaded_with_the_frontend(
         await hass.async_block_till_done()
 
     url = add_extra_js_url.call_args.args[1]
-    assert url.startswith(f"{CARD_URL}?v=")
     response = await (await hass_client()).get(url)
     assert response.status == 200
-    assert "customElements.define" in await response.text()
+    body = await response.text()
+    assert "customElements.define" in body
+    # Browsers cache the file for a month, so the URL must change with its contents.
+    assert url == f"{CARD_URL}?v={hashlib.sha256(body.encode()).hexdigest()[:12]}"

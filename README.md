@@ -58,7 +58,7 @@ Want to see it work right away? Say a command to your LLM agent once, then run t
 
 ## Dashboard card
 
-Assist Learner includes a dashboard card, and loads it for you, so there's no resource to add. After installing or updating, restart Home Assistant and refresh your browser. Then edit a dashboard, choose **Add card**, and pick **Assist Learner**. Or add it in YAML:
+Assist Learner includes a dashboard card, and loads it for you, so there's no resource to add. After installing or updating, restart Home Assistant and refresh your browser. Then edit a dashboard, choose **Add card**, switch to the **By card** tab, and search for **Assist Learner**. The **By entity** tab opens first and only suggests cards for entities, such as the Assist Learner status sensor, so the card isn't listed there. Or add it in YAML:
 
 ```yaml
 type: custom:assist-learner-card
